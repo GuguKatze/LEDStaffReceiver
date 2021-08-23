@@ -10,19 +10,8 @@ bool viewInSerialPlotter = true;
 
 unsigned long lastTest = 0;
 
-union vu_ {
-  struct __attribute__((packed)){
-    int8_t pitch;
-    //uint16_t left[7];
-    uint8_t left[7];
-    //uint16_t right[7];
-    uint8_t right[7];
-  };
-  //uint8_t bytes[28];
-  //uint8_t bytes[14];
-  uint8_t bytes[15];
-};
 union vu_ vu;
+union I2Cdata_ I2Cdata;
 
 #include <ArduinoBLE.h>
 BLEService ledService("19B10000-E8F2-537E-4F6C-D104768A1214"); // BLE LED Service
@@ -100,9 +89,8 @@ void loop() {
       if (vuCharacteristic.written()) {
         unsigned int byteCount = vuCharacteristic.readValue(vu.bytes, sizeof(vu.bytes));
         //Serial.println(String(byteCount));
-        //Serial.print("[<---]");
-        Serial.print("<");
         /*
+        Serial.print("<");
         for(int i=0;i<7;i++){
           Serial.print(max((vu.left[i]),0));
           Serial.print(":");
@@ -137,8 +125,9 @@ void loop() {
 
 void requestEvent()
 {
-  //Serial.println("[--->]");
-  vu.pitch = (int) pitch;
-  Serial.println("> " + String(vu.pitch));
-  Wire.write(vu.bytes, sizeof(vu.bytes));
+  //Serial.println("!");
+  memcpy(&I2Cdata.bytes[0], &vu.bytes[0], sizeof(vu.bytes));
+  I2Cdata.pitch = (int) pitch;
+  //Wire.write(vu.bytes, sizeof(vu.bytes));
+  Wire.write(I2Cdata.bytes, sizeof(I2Cdata.bytes));
 }
