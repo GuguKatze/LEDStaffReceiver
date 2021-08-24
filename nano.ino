@@ -127,7 +127,8 @@ void requestEvent()
 {
   //Serial.println("!");
   memcpy(&I2Cdata.bytes[0], &vu.bytes[0], sizeof(vu.bytes));
-  I2Cdata.pitch = (int) pitch;
+  I2Cdata.pitch = (int8_t) pitch;
+  //Serial.println("pitch: " + String(I2Cdata.pitch));
   //Wire.write(vu.bytes, sizeof(vu.bytes));
   Wire.write(I2Cdata.bytes, sizeof(I2Cdata.bytes));
 }
