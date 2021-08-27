@@ -13,6 +13,10 @@ unsigned long lastTest = 0;
 union vu_ vu;
 union I2Cdata_ I2Cdata;
 
+bool vuSignal = false;
+unsigned long vuLastSignal = 0;
+unsigned long vuLastCheck = 0;
+
 #include <ArduinoBLE.h>
 BLEService ledService("19B10000-E8F2-537E-4F6C-D104768A1214"); // BLE LED Service
 BLECharacteristic vuCharacteristic("19B10001-E8F2-537E-4F6C-D104768A1214", BLERead | BLEWrite, sizeof(vu.bytes));
@@ -54,6 +58,8 @@ void setup() {
   IMU.gyroUnit=DEGREEPERSECOND; // DEGREEPERSECOND  RADIANSPERSECOND  REVSPERMINUTE  REVSPERSECOND  
   microsPerReading = 1000000 / sensorRate;
   Wire.begin(0x40);
+  Wire.setClock(1000000);
+  
   Wire.onRequest(requestEvent);
   pinMode(3, OUTPUT); // top  
   digitalWrite(3, HIGH ); 
@@ -62,6 +68,9 @@ void setup() {
   pinMode(5, OUTPUT); // bottom
   digitalWrite(5, HIGH );
   pinMode(6, OUTPUT); // left
+  digitalWrite(6, HIGH );
+  
+  pinMode(7, OUTPUT); // vu
   digitalWrite(6, HIGH );
   Serial.println("Setup finished ...");
 }
@@ -78,7 +87,6 @@ void loop() {
 
     // while the central is still connected to peripheral:
     while (central.connected()) {
-
 /*
   BLEDevice central = BLE.central();
   if (central) {
@@ -88,6 +96,7 @@ void loop() {
     */
       if (vuCharacteristic.written()) {
         unsigned int byteCount = vuCharacteristic.readValue(vu.bytes, sizeof(vu.bytes));
+        //Serial.print("[IN]");
         //Serial.println(String(byteCount));
         /*
         Serial.print("<");
@@ -98,6 +107,23 @@ void loop() {
           if(i<6){ Serial.print(", "); }else{ Serial.println(); }
         }
         */
+        if(millis() - vuLastCheck > 100){
+          vuLastCheck = millis();
+          int signalCount = 0;
+          for(int i=0;i<7;i++){  
+            if(vu.left[i]  > 20){ signalCount++; }
+            if(vu.right[i] > 20){ signalCount++; } 
+          }
+          if(signalCount >= 4){
+            vuLastSignal = millis();
+            digitalWrite( 7, LOW);
+            vuSignal = true;
+          };
+          if(vuSignal && millis() - vuLastSignal > 1000 * 3){
+            digitalWrite( 7, HIGH);
+            vuSignal = false;
+          }
+        }
       }
     }
   }
@@ -125,7 +151,7 @@ void loop() {
 
 void requestEvent()
 {
-  //Serial.println("!");
+  //Serial.println("[OUT]");
   memcpy(&I2Cdata.bytes[0], &vu.bytes[0], sizeof(vu.bytes));
   I2Cdata.pitch = (int8_t) pitch;
   //Serial.println("pitch: " + String(I2Cdata.pitch));
