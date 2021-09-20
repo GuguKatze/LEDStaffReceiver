@@ -8,14 +8,11 @@ unsigned long microsPrevious = 0;
 bool useSerial = true;
 bool viewInSerialPlotter = true;
 
-unsigned long lastTest = 0;
-
 union vu_ vu;
 union I2Cdata_ I2Cdata;
-
-bool vuSignal = false;
+uint8_t peaks = 0;
 unsigned long vuLastSignal = 0;
-unsigned long vuLastCheck = 0;
+
 
 #include <ArduinoBLE.h>
 BLEService ledService("19B10000-E8F2-537E-4F6C-D104768A1214"); // BLE LED Service
@@ -71,7 +68,7 @@ void setup() {
   digitalWrite(6, HIGH );
   
   pinMode(7, OUTPUT); // vu
-  digitalWrite(6, HIGH );
+  digitalWrite(7, HIGH );
   Serial.println("Setup finished ...");
 }
 
@@ -96,6 +93,9 @@ void loop() {
     */
       if (vuCharacteristic.written()) {
         unsigned int byteCount = vuCharacteristic.readValue(vu.bytes, sizeof(vu.bytes));
+        vuLastSignal = millis();
+        digitalWrite( 7, LOW);
+        //vuSignal = true;
         //Serial.print("[IN]");
         //Serial.println(String(byteCount));
         /*
@@ -107,23 +107,9 @@ void loop() {
           if(i<6){ Serial.print(", "); }else{ Serial.println(); }
         }
         */
-        if(millis() - vuLastCheck > 100){
-          vuLastCheck = millis();
-          int signalCount = 0;
-          for(int i=0;i<7;i++){  
-            if(vu.left[i]  > 20){ signalCount++; }
-            if(vu.right[i] > 20){ signalCount++; } 
-          }
-          if(signalCount >= 4){
-            vuLastSignal = millis();
-            digitalWrite( 7, LOW);
-            vuSignal = true;
-          };
-          if(vuSignal && millis() - vuLastSignal > 1000 * 3){
-            digitalWrite( 7, HIGH);
-            vuSignal = false;
-          }
-        }
+      }
+      if(millis() - vuLastSignal > 200){
+        digitalWrite( 7, HIGH);
       }
     }
   }
