@@ -117,18 +117,14 @@ void loop() {
         Wire.write(vuPacket.bytes, sizeof(vuPacket.bytes));
         Wire.endTransmission();
         
-        //vuSignal = true;
-        //Serial.print("[IN]");
-        //Serial.println(String(byteCount));
-        /*
         Serial.print("<");
         for(int i=0;i<7;i++){
-          Serial.print(max((vu.left[i]),0));
+          Serial.print(max((vuPacket.left[i]),0));
           Serial.print(":");
-          Serial.print(max((vu.right[i]),0));
+          Serial.print(max((vuPacket.right[i]),0));
           if(i<6){ Serial.print(", "); }else{ Serial.println(); }
         }
-        */
+       
       }
       if(millis() - vuLastSignal > 200){
         digitalWrite( 7, HIGH);
