@@ -27,6 +27,32 @@ union vu_ {
 };
 extern union vu_ vu;
 
+
+////////////
+// effect //
+////////////
+union effectPacket_ {
+  struct __attribute__((packed)){
+    uint8_t packetType = 1;
+    uint8_t effect;
+  };
+  uint8_t bytes[2];
+};
+extern union effectPacket_ effectPacket;
+///////////
+// pitch //
+///////////
+union pitchPacket_ {
+  struct __attribute__((packed)){
+    uint8_t packetType = 2;
+    int8_t pitch;
+  };
+  uint8_t bytes[2];
+};
+extern union pitchPacket_ pitchPacket;
+////////
+// vu //
+////////
 union vuPacket_ {
   struct __attribute__((packed)){
     uint8_t packetType = 3;
@@ -35,19 +61,4 @@ union vuPacket_ {
   };
   uint8_t bytes[15];
 };
-
-union pitchPacket_ {
-  struct __attribute__((packed)){
-    uint8_t packetType = 2;
-    int8_t pitch;
-  };
-  uint8_t bytes[2];
-};
-
-union effectPacket_ {
-  struct __attribute__((packed)){
-    uint8_t packetType = 1;
-    uint8_t effect;
-  };
-  uint8_t bytes[2];
-};
+extern union vuPacket_ vuPacket;

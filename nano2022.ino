@@ -9,7 +9,10 @@ unsigned long microsPrevious = 0;
 bool useSerial = true;
 bool viewInSerialPlotter = true;
 
-union vu_ vu;
+union effectPacket_ effectPacket;
+union pitchPacket_  pitchPacket;
+union vuPacket_     vuPacket;
+
 union I2Cdata_ I2Cdata;
 uint8_t peaks = 0;
 unsigned long vuLastSignal = 0;
@@ -21,6 +24,7 @@ BLECharacteristic vuCharacteristic("19B10001-E8F2-537E-4F6C-D104768A1214", BLERe
 uint8_t ledRed   = 4;
 uint8_t ledGreen = 2;
 uint8_t ledBlue  = 3;
+unsigned long ledBlueLastTime = 0;
 
 void setup() {
 
@@ -106,14 +110,47 @@ void loop() {
         Wire.write(effectPacket.bytes, sizeof(effectPacket.bytes));
         Wire.endTransmission(); 
       }
-      // BLE <-----------------------------------------
-       analogWrite( ledBlue,  0);
+      
+      /////////
+      // BLE //
+      /////////
+      if(millis() - ledBlueLastTime > 100){
+        analogWrite( ledBlue, 0);
+      }
       if(vuCharacteristic.written()) {
-        analogWrite( ledBlue,  24);
-        Serial.println("[BLE] Received packet. Type: pitchPacket");
+        analogWrite( ledBlue, 24);
+        ledBlueLastTime = millis();
+        //Serial.println("[BLE] Received packet. Type: pitchPacket");
+
+        byte packetType;
+        vuCharacteristic.readValue(packetType);
+        if(packetType == 1){
+          vuCharacteristic.readValue(effectPacket.bytes, sizeof(effectPacket.bytes));
+          //memcpy(&effectPacket.bytes[1], &vu.bytes[0], sizeof(vu.bytes));
+          Serial.println("[BLE] Received packet. Type: effect");
+        }else if(packetType == 2){
+          vuCharacteristic.readValue(pitchPacket.bytes, sizeof(pitchPacket.bytes));
+          Serial.println("[BLE] Received packet. Type: pitch");
+          Serial.println(pitchPacket.pitch);
+        }else if(packetType == 3){
+           vuCharacteristic.readValue(vuPacket.bytes, sizeof(vuPacket.bytes));
+           Serial.println("[BLE] Received packet. Type: vu");
+        }
+        /**
         uint8_t packetType[1];
         vuCharacteristic.readValue(packetType, 1);
-        //Serial.println(packetType[0]);
+        Serial.println(packetType[0]);
+        
+        uint8_t packetType2[1];
+        vuCharacteristic.readValue(packetType2, 1);        
+        Serial.println(packetType2[0]);
+        **/
+        
+        //uint8_t packetBuffer[32];
+        //vuCharacteristic.readValue(packetBuffer, 32);
+        //uint8_t packetType = packetBuffer[0];
+
+        
         /*
         unsigned int byteCount = vuCharacteristic.readValue(vu.bytes, sizeof(vu.bytes));
         vuLastSignal = millis();
