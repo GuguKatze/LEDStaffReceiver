@@ -9,6 +9,10 @@ unsigned long microsPrevious = 0;
 bool useSerial = true;
 bool viewInSerialPlotter = true;
 
+
+/////////////
+// packets //
+/////////////
 union effectPacket_ effectPacket;
 union pitchPacket_  pitchPacket;
 union vuPacket_     vuPacket;
@@ -197,14 +201,8 @@ void requestEvent()
   Wire.write(I2Cdata.bytes, sizeof(I2Cdata.bytes));
  */
   if(random(0, 2) == 1){
-    union pitchPacket_ pitchPacket;
-    pitchPacket.packetType = 3;
-    pitchPacket.pitch = (int8_t) pitch;
     Wire.write(pitchPacket.bytes, sizeof(pitchPacket.bytes));
   }else{
-    union effectPacket_ effectPacket;
-    effectPacket.packetType = 1;
-    effectPacket.effect = 5;
     Wire.write(effectPacket.bytes, sizeof(effectPacket.bytes));
   }
 }
