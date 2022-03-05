@@ -2,12 +2,10 @@
 float pitchFiltered = 0;
 float xAccFiltered = 0;
 
-signed int state = -1;
-long stateSince = 0;
-unsigned int stateSpinning = 0;
-unsigned int stateUp = 0;
-unsigned int stateDown = 0;
-unsigned int stateOther = 0;
+unsigned long lastStateCheckTime = 0;
+bool boolVertical = false;
+bool boolWasVertical = false;
+unsigned long sinceTime = 0;
 
 void imuLogic() {
   float xAcc, yAcc, zAcc, xGyro, yGyro, zGyro;
@@ -20,8 +18,46 @@ void imuLogic() {
   //xAccFiltered  = xAccFiltered  * 0.99 +  xAcc * 0.01;
   xAccFiltered  = xAccFiltered  * 0.9 +  xAcc * 0.1;
 
-  // 3 = spinning yes/no
-  // 4 = vertical yes/no
-  // 5 = up is up
- 
+if(millis() - lastStateCheckTime > 250){
+  lastStateCheckTime = millis();
+
+  if(pitchFiltered >  30){                       //digitalWrite( 8,  LOW); digitalWrite( 9, HIGH); digitalWrite( 10, HIGH); //Serial.println("Vertical UP.");
+    if(boolWasVertical){
+      if(millis() - sinceTime > 2000){
+        //digitalWrite( 8,  LOW);
+        digitalWrite( 9, HIGH); digitalWrite( 10, HIGH); //Serial.println("Vertical UP.");
+      }
+    }else{
+      boolWasVertical = true;
+      sinceTime = millis();
+    }
+  }else if(pitchFiltered < -30){                 //digitalWrite( 8,  LOW); digitalWrite( 9, HIGH); digitalWrite( 10,  LOW); //Serial.println("Vertical DOWN.");
+    if(boolWasVertical){
+      if(millis() - sinceTime > 2000){
+        //digitalWrite( 8,  LOW);
+        digitalWrite( 9, HIGH); digitalWrite( 10, LOW); //Serial.println("Vertical DOWN.");
+      }
+    }else{
+      boolWasVertical = true;
+      sinceTime = millis();
+    }
+  }else{                                         //digitalWrite( 8,  LOW); digitalWrite( 9,  LOW); digitalWrite( 10,  LOW); //Serial.println("Other.");
+    if(!boolWasVertical){
+      if(millis() - sinceTime > 2000){
+        //digitalWrite( 8,  HIGH);
+        digitalWrite( 9, LOW); digitalWrite( 10, LOW); //Serial.println("Horizontal.");
+      }
+    }else{
+      boolWasVertical = false;
+      sinceTime = millis();
+    }
+  }
+  /*
+  float xaf = xAccFiltered * 10;
+  Serial.print(pitchFiltered);
+  Serial.print(",");
+  Serial.print(xaf);
+  Serial.println(",-90,90");
+  */
+  }
 }

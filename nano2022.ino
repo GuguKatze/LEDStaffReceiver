@@ -8,28 +8,31 @@ unsigned long microsPrevious = 0;
 unsigned long lastImuTime = 0;
 bool useSerial = true;
 
-bool boolVertical = false;
-bool boolWasVertical = false;
-unsigned long sinceTime = 0;
-
 /////////////
 // packets //
 /////////////
-union effectPacket_ effectPacket;
-union pitchPacket_  pitchPacket;
-union vuPacket_     vuPacket;
+union effectPacket_           effectPacket;
+union pitchPacket_             pitchPacket;
+union vuPacket_                   vuPacket;
+union pitchRemotePacket_ pitchRemotePacket;
 
 uint8_t peaks = 0;
 unsigned long vuLastSignal = 0;
 
 #include <ArduinoBLE.h>
 BLEService ledService("19B10000-E8F2-537E-4F6C-D104768A1214"); // BLE LED Service
-BLECharacteristic vuCharacteristic("19B10001-E8F2-537E-4F6C-D104768A1214", BLERead | BLEWrite, sizeof(vuPacket.bytes));
+
+BLECharacteristic      effectCharacteristic("19B10001-E8F2-537E-4F6C-D104768A1212", BLERead | BLEWrite, sizeof(      effectPacket.bytes));
+BLECharacteristic pitchRemoteCharacteristic("19B10001-E8F2-537E-4F6C-D104768A1213", BLERead | BLEWrite, sizeof( pitchRemotePacket.bytes));
+BLECharacteristic          vuCharacteristic("19B10001-E8F2-537E-4F6C-D104768A1214", BLERead | BLEWrite, sizeof(          vuPacket.bytes));
 
 uint8_t ledRed   = 4;
 uint8_t ledGreen = 2;
 uint8_t ledBlue  = 3;
+unsigned long ledRedLastTime = 0;
+unsigned long ledGreenLastTime = 0;
 unsigned long ledBlueLastTime = 0;
+
 
 void setup() {
 
@@ -53,7 +56,9 @@ void setup() {
   }
   BLE.setLocalName("LED");
   BLE.setAdvertisedService(ledService);
-  ledService.addCharacteristic(vuCharacteristic);
+  ledService.addCharacteristic(     effectCharacteristic);
+  ledService.addCharacteristic(pitchRemoteCharacteristic);
+  ledService.addCharacteristic(         vuCharacteristic);
   BLE.addService(ledService);
   BLE.advertise();
   String address = BLE.address();
@@ -73,14 +78,14 @@ void setup() {
   Wire.begin(); // master
   Wire.setClock(1000000);
   
-  pinMode( 3, OUTPUT); digitalWrite( 3, LOW); 
-  pinMode( 4, OUTPUT); digitalWrite( 4, LOW);
-  pinMode( 5, OUTPUT); digitalWrite( 5, LOW);
-  pinMode( 6, OUTPUT); digitalWrite( 6, LOW);
-  pinMode( 7, OUTPUT); digitalWrite( 7, LOW);
-  pinMode( 8, OUTPUT); digitalWrite( 8, LOW);
-  pinMode( 9, OUTPUT); digitalWrite( 9, LOW);
-  pinMode(10, OUTPUT); digitalWrite(10, LOW);
+  //pinMode( 3, OUTPUT); digitalWrite( 3, LOW); 
+  //pinMode( 4, OUTPUT); digitalWrite( 4, LOW);
+  //pinMode( 5, OUTPUT); digitalWrite( 5, LOW);
+  //pinMode( 6, OUTPUT); digitalWrite( 6, LOW);
+  //pinMode( 7, OUTPUT); digitalWrite( 7, LOW);
+  //pinMode( 8, OUTPUT); digitalWrite( 8, LOW);
+  pinMode( 9, OUTPUT); digitalWrite( 9, LOW); // isVertical?
+  pinMode(10, OUTPUT); digitalWrite(10, LOW); // isPointingUp?
   Serial.println("Setup finished ...");
 }
 
@@ -96,22 +101,23 @@ void loop() {
 
     // while the central is still connected to peripheral:
     while (central.connected()) {
+
+
+      if(millis() - ledRedLastTime > 25)   { analogWrite(    ledRed,  0); }
+      if(millis() - ledGreenLastTime > 25) { analogWrite(  ledGreen,  0); }
+      if(millis() - ledBlueLastTime > 25)  { analogWrite(   ledBlue,  0); }
+
 /*
-  BLEDevice central = BLE.central();
-  if (central) {
-    Serial.print("Connected to central: ");
-    Serial.println(central.address());
-    if(central.connected()) {
-    */
       if(random(0,10000) == 0){
-        Wire.beginTransmission(0x40);
-        union effectPacket_ effectPacket;
-        effectPacket.packetType = 1;
         effectPacket.effect = 5;
-        //Serial.println("[I2C] Sending packet. Type: effectPacket");
+        Wire.beginTransmission(0x40);
         Wire.write(effectPacket.bytes, sizeof(effectPacket.bytes));
         Wire.endTransmission(); 
+        //Serial.println("[I2C] Sending packet. Type: effectPacket");
       }
+      */
+
+      
       /////////
       // IMU //
       /////////
@@ -120,72 +126,49 @@ void loop() {
         imuLogic();
         if(millis() - lastImuTime > 250) {
           lastImuTime = millis();
-
-//bool boolVertical = false;
-//bool boolWasVertical = false;
-//unsigned long sinceTime = 0;
-
-          if(pitchFiltered >  30){                       //digitalWrite( 8,  LOW); digitalWrite( 9, HIGH); digitalWrite( 10, HIGH); //Serial.println("Vertical UP.");
-            if(boolWasVertical){
-              if(millis() - sinceTime > 3000){
-                digitalWrite( 8,  LOW); digitalWrite( 9, HIGH); digitalWrite( 10, HIGH); //Serial.println("Vertical UP.");
-              }
-            }else{
-              boolWasVertical = true;
-              sinceTime = millis();
-            }
-          }else if(pitchFiltered < -30){                 //digitalWrite( 8,  LOW); digitalWrite( 9, HIGH); digitalWrite( 10,  LOW); //Serial.println("Vertical DOWN.");
-            if(boolWasVertical){
-              if(millis() - sinceTime > 3000){
-                digitalWrite( 8,  LOW); digitalWrite( 9, HIGH); digitalWrite( 10, LOW); //Serial.println("Vertical DOWN.");
-              }
-            }else{
-              boolWasVertical = true;
-              sinceTime = millis();
-            }
-          }else{                                         //digitalWrite( 8,  LOW); digitalWrite( 9,  LOW); digitalWrite( 10,  LOW); //Serial.println("Other.");
-            if(!boolWasVertical){
-              if(millis() - sinceTime > 3000){
-                digitalWrite( 8,  HIGH); digitalWrite( 9, LOW); digitalWrite( 10, LOW); //Serial.println("Horizontal.");
-              }
-            }else{
-              boolWasVertical = false;
-              sinceTime = millis();
-            }
-          }
-          float xaf = xAccFiltered * 10;
-          Serial.print(pitchFiltered);
-          Serial.print(",");
-          Serial.print(xaf);
-          Serial.println(",-90,90");
+          int8_t pitchFilteredInt = int(pitchFiltered);
+          pitchPacket.pitch = pitchFiltered;
+          Wire.beginTransmission(0x40);
+          Wire.write(pitchPacket.bytes, sizeof(pitchPacket.bytes));
+          Wire.endTransmission(); 
+          //Serial.println("[I2C] Sending packet. Type: effectPacket");
+          //analogWrite( ledGreen, 24);
+          //ledGreenLastTime = millis();
         }
       }
-      
       /////////
       // BLE //
       /////////
-      if(millis() - ledBlueLastTime > 1000){
-        analogWrite( ledBlue, 0);
+
+//memcpy(&effectPacket.bytes[1], &vu.bytes[0], sizeof(vu.bytes)
+      
+      if(effectCharacteristic.written()){
+        analogWrite( ledRed, 24);
+        ledRedLastTime = millis();
+        effectCharacteristic.readValue(effectPacket.bytes, sizeof(effectPacket.bytes));
+        Wire.beginTransmission(0x40);
+        Wire.write(effectPacket.bytes, sizeof(effectPacket.bytes));
+        Wire.endTransmission(); 
+        Serial.println("[BLE] Received packet. Type: effect");
+      }
+      if(pitchRemoteCharacteristic.written()){
+        analogWrite( ledGreen, 24);
+        ledGreenLastTime = millis();
+        pitchRemoteCharacteristic.readValue(pitchRemotePacket.bytes, sizeof(pitchRemotePacket.bytes));
+        Wire.beginTransmission(0x40);
+        Wire.write(pitchRemotePacket.bytes, sizeof(pitchRemotePacket.bytes));
+        Wire.endTransmission(); 
+        Serial.println("[BLE] Received packet. Type: pitch");
       }
       if(vuCharacteristic.written()) {
         analogWrite( ledBlue, 24);
         ledBlueLastTime = millis();
-        //Serial.println("[BLE] Received packet. Type: pitchPacket");
-
-        byte packetType;
-        vuCharacteristic.readValue(packetType);
-        if(packetType == 1){
-          vuCharacteristic.readValue(effectPacket.bytes, sizeof(effectPacket.bytes));
-          //memcpy(&effectPacket.bytes[1], &vu.bytes[0], sizeof(vu.bytes));
-          //Serial.println("[BLE] Received packet. Type: effect");
-        }else if(packetType == 2){
-          vuCharacteristic.readValue(pitchPacket.bytes, sizeof(pitchPacket.bytes));
-          //Serial.println("[BLE] Received packet. Type: pitch");
-          //Serial.println(pitchPacket.pitch);
-        }else if(packetType == 3){
-           vuCharacteristic.readValue(vuPacket.bytes, sizeof(vuPacket.bytes));
-           //Serial.println("[BLE] Received packet. Type: vu");
-        }
+        vuCharacteristic.readValue(vuPacket.bytes, sizeof(vuPacket.bytes));
+        Wire.beginTransmission(0x40);
+        Wire.write(vuPacket.bytes, sizeof(vuPacket.bytes));
+        Wire.endTransmission(); 
+        Serial.println("[BLE] Received packet. Type: vu");
+      }
         /**
         uint8_t packetType[1];
         vuCharacteristic.readValue(packetType, 1);
@@ -226,7 +209,7 @@ void loop() {
         digitalWrite( 7, HIGH);
       }
       */
-      }
+   
     }
   }
 
