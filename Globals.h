@@ -14,8 +14,9 @@ union effectPacket_ {
   struct __attribute__((packed)){
     uint8_t packetType = 1;
     uint8_t effect;
+    uint8_t duration;
   };
-  uint8_t bytes[2];
+  uint8_t bytes[3];
 };
 extern union effectPacket_ effectPacket;
 ///////////
